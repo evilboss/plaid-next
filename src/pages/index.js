@@ -181,7 +181,7 @@ function App () {
         )}
 
         {/* No transactions */}
-        {institution && transactions.length === 0 && (
+        {!loading && institution && transactions.length === 0 && (
           <div className="text-center text-gray-600 mt-8">
             No transactions found for this account for this selected start date.
           </div>
