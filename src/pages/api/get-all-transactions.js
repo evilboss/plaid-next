@@ -1,5 +1,5 @@
 // pages/api/get-transactions.js
-import plaidClient from '../../lib/plaid';
+import plaidClient from '@/lib/plaid';
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
