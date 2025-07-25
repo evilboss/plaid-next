@@ -28,7 +28,7 @@ function App() {
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="flex flex-col items-center">
           <img
-            src="https://cdn.plaid.com/link/v2/stable/assets/brand.svg"
+            src="https://upload.wikimedia.org/wikipedia/commons/c/c0/Plaid_logo.svg"
             alt="Plaid"
             className="h-10 mb-6"
           />
