@@ -3,7 +3,6 @@
 A modern demo app that lets users securely connect a (sandbox) bank account using the Plaid API and view recent transactions, styled with Tailwind CSS and built on Next.js.
 
 ![screenshot](./screenshot.png) <!-- Add a screenshot if you like -->
-
 ---
 
 ## Features
