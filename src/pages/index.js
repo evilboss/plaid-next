@@ -5,14 +5,21 @@ import axios from 'axios';
 function App() {
   const [linkToken, setLinkToken] = useState();
   const [accessToken, setAccessToken] = useState();
+  const [allTransactions, setAllTransactions] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [institution, setInstitution] = useState();
 
+  // Date filter state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Fetch Plaid Link token on load
   useEffect(() => {
     axios.post('/api/create-link-token')
       .then(res => setLinkToken(res.data.link_token));
   }, []);
 
+  // Plaid Link config
   const { open, ready } = usePlaidLink({
     token: linkToken,
     onSuccess: async (public_token, metadata) => {
@@ -20,11 +27,34 @@ function App() {
       const res = await axios.post('/api/exchange-public-token', { public_token });
       setAccessToken(res.data.accessToken);
 
-      // Fetch transactions after linking
-      const txRes = await axios.post('/api/transactions', { access_token: res.data.accessToken });
-      setTransactions(txRes.data.transactions);
+      // Fetch ALL transactions (e.g. last year)
+      const txRes = await axios.post('/api/get-all-transactions', {
+        access_token: res.data.accessToken,
+        // you can set a long time ago for max coverage, or leave out for default
+      });
+      setAllTransactions(txRes.data.transactions || []);
+
+      // Optionally, default filter to the last 30 days
+      const defaultEnd = new Date().toISOString().slice(0, 10);
+      const defaultStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      setEndDate(defaultEnd);
+      setStartDate(defaultStart);
     },
   });
+
+  // Filter transactions when dates or allTransactions change
+  useEffect(() => {
+    if (!startDate && !endDate) {
+      setTransactions(allTransactions);
+      return;
+    }
+    setTransactions(
+      allTransactions.filter(tx => {
+        const txDate = tx.date;
+        return (!startDate || txDate >= startDate) && (!endDate || txDate <= endDate);
+      })
+    );
+  }, [allTransactions, startDate, endDate]);
 
   function getBankLogo(institution) {
     if (!institution) return null;
@@ -59,7 +89,7 @@ function App() {
         </div>
 
         {/* Institution logo and name just above table */}
-        {institution && transactions.length > 0 && (
+        {institution && allTransactions.length > 0 && (
           <div className="flex flex-col items-center mb-6">
             <img
               src={getBankLogo(institution)}
@@ -72,6 +102,35 @@ function App() {
           </div>
         )}
 
+        {/* Date Range Filter */}
+        {allTransactions.length > 0 && (
+          <form className="flex flex-wrap items-end gap-2 mb-4" onSubmit={e => e.preventDefault()}>
+            <div className="flex flex-col">
+              <label htmlFor="start-date" className="text-sm font-medium text-gray-700">From</label>
+              <input
+                type="date"
+                id="start-date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={e => setStartDate(e.target.value)}
+                className="border rounded px-3 py-1 text-gray-700 shadow"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label htmlFor="end-date" className="text-sm font-medium text-gray-700">To</label>
+              <input
+                type="date"
+                id="end-date"
+                value={endDate}
+                min={startDate || undefined}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setEndDate(e.target.value)}
+                className="border rounded px-3 py-1 text-gray-700 shadow"
+              />
+            </div>
+          </form>
+        )}
+
         {/* Transaction Table */}
         {transactions.length > 0 && (
           <>
@@ -81,17 +140,17 @@ function App() {
                   Recent Transactions
                 </caption>
                 <thead>
-                <tr className="bg-gray-50">
-                  <th className="py-3 px-2 text-left text-gray-800">Date</th>
-                  <th className="px-2 text-left text-gray-800">Description</th>
-                  <th className="px-2 text-right text-gray-800">Spent</th>
-                  <th className="px-2 text-right text-gray-800">Received</th>
-                  <th className="px-2 text-center text-gray-800">Status</th>
+                <tr className="bg-gray-50 text-gray-600">
+                  <th className="py-3 px-2 text-left">Date</th>
+                  <th className="px-2 text-left">Description</th>
+                  <th className="px-2 text-right">Spent</th>
+                  <th className="px-2 text-right">Received</th>
+                  <th className="px-2 text-center">Status</th>
                 </tr>
                 </thead>
                 <tbody>
                 {transactions.map((tx) => (
-                  <tr key={tx.transaction_id} className="border-t text-gray-800">
+                  <tr key={tx.transaction_id} className="border-t text-gray-600">
                     <td className="py-2 px-2 font-mono">{tx.date}</td>
                     <td className="px-2">{tx.name}</td>
                     <td className="px-2 text-red-500 font-semibold text-right">
@@ -115,11 +174,18 @@ function App() {
                 ))}
                 </tbody>
               </table>
-              <div className="text-xs text-gray-800 mt-2">
+              <div className="text-xs text-gray-400 mt-2">
                 Amounts in <span className="font-semibold">Spent</span> are money out; <span className="font-semibold">Received</span> are money in.
               </div>
             </div>
           </>
+        )}
+
+        {/* No transactions */}
+        {allTransactions.length > 0 && transactions.length === 0 && (
+          <div className="text-center text-gray-600 mt-8">
+            No transactions in the selected date range.
+          </div>
         )}
       </div>
     </div>
